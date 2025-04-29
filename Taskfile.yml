@@ -1,0 +1,105 @@
+# T3 Foundation Gemstone Project [t3gemstone.org]
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3'
+
+vars:
+  DISTRO_BASE: '{{ .DISTRO_BASE | default "ubuntu" }}'
+  DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
+  # https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads : starting from GCC 11.2
+  # https://developer.arm.com/downloads/-/gnu-a : starting from GCC 8.2
+  TARGET_TRIPLET: 'aarch64-none-linux-gnu'
+  _TOOLCHAIN_URL: >
+    {{if and (eq .DISTRO_BASE "ubuntu") (eq .DISTRO_SUITE "jammy")}}
+      "https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{ .TARGET_TRIPLET }}.tar.xz"
+    {{else if and (eq .DISTRO_BASE "ubuntu") (eq .DISTRO_SUITE "noble")}}
+      "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-{{ .TARGET_TRIPLET }}.tar.xz"
+    {{else if and (eq .DISTRO_BASE "debian") (eq .DISTRO_SUITE "bullseye")}}
+      "https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-{{ .TARGET_TRIPLET }}.tar.xz"
+    {{else if and (eq .DISTRO_BASE "debian") (eq .DISTRO_SUITE "bookworm")}}
+      "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-{{ .TARGET_TRIPLET }}.tar.xz"
+    {{end}}
+  TOOLCHAIN_URL: '{{ trim ._TOOLCHAIN_URL }}'
+  TOOLCHAIN_PATH: '{{ .ROOT_DIR }}/build/toolchains/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+
+tasks:
+
+  default:
+    silent: true
+    cmds:
+      - task --list-all --summary
+      - echo -e "\nEnvironment:\n"
+      - echo "  DISTRO_BASE      = '{{ .DISTRO_BASE }}'"
+      - echo "  DISTRO_SUITE     = '{{ .DISTRO_SUITE }}'"
+      - echo "  TARGET_TRIPLET     = '{{ .TARGET_TRIPLET }}'"
+      - echo "  TOOLCHAIN_URL    = '{{ .TOOLCHAIN_URL }}'"
+      - echo "  TOOLCHAIN_PATH    = '{{ .TOOLCHAIN_PATH }}'"
+
+  destroy:
+    prompt: '{{ .TOOLCHAIN_PATH }} The toolchain in this path will be deleted. Do you want to continue?'
+    cmds:
+      - 'rm -rf {{ .TOOLCHAIN_PATH }}'
+
+  check-toolchain:
+    internal: true
+    silent: true
+    preconditions:
+      - sh: 'test "$({{ .TOOLCHAIN_PATH }}/bin/{{ .TARGET_TRIPLET }}-gcc -dumpmachine)" == "{{ .TARGET_TRIPLET }}"'
+        msg: "{{ .TOOLCHAIN_PATH }} Toolchain is not installed properly. Run <task destroy fetch> to download it again."
+
+  fetch:
+    preconditions:
+      - sh: '! test -d {{ .TOOLCHAIN_PATH }}'
+        msg: "{{ .TOOLCHAIN_PATH }} Toolchain directory already exists. Run <task destroy fetch> if you want to download it again."
+    cmds:
+      - mkdir -p {{ .TOOLCHAIN_PATH }}
+      - |
+        cd $(mktemp -d)
+        wget --no-verbose -O toolchain.tar.xz {{ .TOOLCHAIN_URL }}
+        tar xf toolchain.tar.xz --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
+      - task: check-toolchain
+
+    requires:
+      vars:
+        - name: DISTRO_BASE
+          enum: [ ubuntu, debian ]
+        - name: DISTRO_SUITE
+          enum:
+            - jammy     # Ubuntu 22
+            - noble     # Ubuntu 24
+            - bullseye  # Debian 11
+            - bookworm  # Debian 12
+
+  source:
+    silent: true
+    cmds:
+      - task: check-toolchain
+      - echo '# Run <eval "$(task source)"> to export following environment variables to your shell'
+      - echo
+      - echo export SDKTARGETSYSROOT='"{{ .TOOLCHAIN_PATH }}/{{ .TARGET_TRIPLET }}/libc"'
+      - echo
+      - echo export AR='{{ .TARGET_TRIPLET }}-ar'
+      - echo export ARCH='arm64'
+      - echo export AS='{{ .TARGET_TRIPLET }}-as'
+      - echo export CC='"{{ .TARGET_TRIPLET }}-gcc  --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CFLAGS='" -O2 -g  -pipe"'
+      - echo export CONFIGURE_FLAGS='"--target={{ .TARGET_TRIPLET }} --host={{ .TARGET_TRIPLET }} --build=x86_64-linux --with-libtool-sysroot=$SDKTARGETSYSROOT"'
+      - echo export CPP='"{{ .TARGET_TRIPLET }}-gcc -E  --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CPPFLAGS='""'
+      - echo export CROSS_COMPILE='{{ .TARGET_TRIPLET }}-'
+      - echo export CXX='"{{ .TARGET_TRIPLET }}-g++  --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CXXFLAGS='" -O2 -g  -pipe"'
+      - echo export GDB='{{ .TARGET_TRIPLET }}-gdb'
+      - echo export KCFLAGS='--sysroot=$SDKTARGETSYSROOT'
+      - echo export LD='{{ .TARGET_TRIPLET }}-ld'
+      - echo export LDFLAGS='"-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed  -Wl,-z,relro,-z,now"'
+      - echo export NM='{{ .TARGET_TRIPLET }}-nm'
+      - echo export OBJCOPY='{{ .TARGET_TRIPLET }}-objcopy'
+      - echo export OBJDUMP='{{ .TARGET_TRIPLET }}-objdump'
+      - echo export PATH='"{{ .TOOLCHAIN_PATH }}/bin:$PATH"'
+      - echo export PKG_CONFIG_PATH='"$SDKTARGETSYSROOT/usr/lib/pkgconfig:$SDKTARGETSYSROOT/usr/share/pkgconfig"'
+      - echo export PKG_CONFIG_SYSROOT_DIR='$SDKTARGETSYSROOT'
+      - echo export RANLIB='{{ .TARGET_TRIPLET }}-ranlib'
+      - echo export READELF='{{ .TARGET_TRIPLET }}-readelf'
+      - echo export STRIP='{{ .TARGET_TRIPLET }}-strip'
+      - echo export TARGET_PREFIX='{{ .TARGET_TRIPLET }}-'
