@@ -1,0 +1,81 @@
+{{/* T3 Foundation Gemstone Project https://t3gemstone.org */}}
+{{/* SPDX-License-Identifier Apache-2.0 */}}
+
+{{/* https://github.com/go-debos/debos */}}
+{{/* https://github.com/go-debos/debos-recipes */}}
+{{/* https://pkg.go.dev/github.com/go-debos/debos/actions */}}
+{{/* https://golang.org/pkg/text/template */}}
+
+{{- $base := or .base "ubuntu" -}}
+{{- $suite := or .suite "jammy" -}}
+
+architecture: arm64
+
+actions:
+
+  - action: debootstrap
+    description: Create minimal system
+    suite: {{ $suite }}
+    variant: minbase
+    check-gpg: false
+{{ if eq $base "debian" }}
+    components: [ main, contrib ]
+    mirror: https://deb.debian.org/debian
+{{ else }}
+    components: [ main, multiverse, universe ]
+    mirror: 'https://ports.ubuntu.com/ubuntu-ports'
+{{ end }}
+
+  - action: apt
+    description: Install tools
+    recommends: false
+    packages:
+      - apt-utils
+      - bash-completion
+      - bind9-dnsutils
+      - file
+      - iputils-ping
+      - less
+      - sudo
+      - wget
+
+  - action: apt
+    description: Install essential libs
+    recommends: false
+    packages:
+      - dpkg-dev
+      - g++
+      - gcc
+      - libc-dev
+      - libc6-dev
+      - libdpkg-perl
+      - libssl-dev
+      - libstdc++6
+
+  - action: apt
+    description: Install other libs
+    recommends: false
+    packages:
+      - libncurses-dev
+
+  - action: run
+    description: Setup host
+    chroot: true
+    command: |
+      echo "{{ $base-$suite }}" >/etc/hostname
+      echo "127.0.0.1	localhost {{ $base-$suite }}" >/etc/hosts
+
+  - action: run
+    description: Add symlinks needed for cross compilation
+    chroot: true
+    command: |
+      wget --no-verbose -O /usr/local/bin/SSymlinker https://raw.githubusercontent.com/abhiTronix/raspberry-pi-cross-compilers/master/utils/SSymlinker
+      chmod +x /usr/local/bin/SSymlinker
+      SSymlinker -s /usr/include/aarch64-linux-gnu/asm -d /usr/include
+      SSymlinker -s /usr/include/aarch64-linux-gnu/gnu -d /usr/include
+      SSymlinker -s /usr/include/aarch64-linux-gnu/bits -d /usr/include
+      SSymlinker -s /usr/include/aarch64-linux-gnu/sys -d /usr/include
+      SSymlinker -s /usr/include/aarch64-linux-gnu/openssl -d /usr/include
+      SSymlinker -s /usr/lib/aarch64-linux-gnu/crtn.o -d /usr/lib/crtn.o
+      SSymlinker -s /usr/lib/aarch64-linux-gnu/crt1.o -d /usr/lib/crt1.o
+      SSymlinker -s /usr/lib/aarch64-linux-gnu/crti.o -d /usr/lib/crti.o

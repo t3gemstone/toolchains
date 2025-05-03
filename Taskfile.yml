@@ -21,6 +21,13 @@ vars:
     {{end}}
   TOOLCHAIN_URL: '{{ trim ._TOOLCHAIN_URL }}'
   TOOLCHAIN_PATH: '{{ .ROOT_DIR }}/build/toolchains/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+  SYSROOT_PATH: '{{ .ROOT_DIR }}/build/sysroots/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+  DEBOS_PATH: '{{ .ROOT_DIR }}/build/debos/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+  DEBOS_VERSION: '{{ .DEBOS_VERSION | default "v1.1.3-custom" }}'
+  SYMLINK_FIXER_PATH: '{{ .ROOT_DIR }}/build/scripts/symlink-fixer'
+
+includes:
+  debos: debos
 
 tasks:
 
@@ -31,68 +38,77 @@ tasks:
       - echo -e "\nEnvironment:\n"
       - echo "  DISTRO_BASE      = '{{ .DISTRO_BASE }}'"
       - echo "  DISTRO_SUITE     = '{{ .DISTRO_SUITE }}'"
+      - echo
       - echo "  TARGET_TRIPLET     = '{{ .TARGET_TRIPLET }}'"
       - echo "  TOOLCHAIN_URL    = '{{ .TOOLCHAIN_URL }}'"
       - echo "  TOOLCHAIN_PATH    = '{{ .TOOLCHAIN_PATH }}'"
+      - echo "  SYSROOT_PATH    = '{{ .SYSROOT_PATH }}'"
+      - echo "  DEBOS_PATH    = '{{ .DEBOS_PATH }}'"
+      - echo "  DEBOS_VERSION    = '{{ .DEBOS_VERSION }}'"
+      - echo "  SYMLINK_FIXER_PATH    = '{{ .SYMLINK_FIXER_PATH }}'"
 
   destroy:
     prompt: '{{ .TOOLCHAIN_PATH }} The toolchain in this path will be deleted. Do you want to continue?'
     cmds:
       - 'rm -rf {{ .TOOLCHAIN_PATH }}'
 
-  check-toolchain:
+  healthcheck:
     internal: true
     silent: true
     preconditions:
       - sh: 'test "$({{ .TOOLCHAIN_PATH }}/bin/{{ .TARGET_TRIPLET }}-gcc -dumpmachine)" == "{{ .TARGET_TRIPLET }}"'
         msg: "{{ .TOOLCHAIN_PATH }} Toolchain is not installed properly. Run <task destroy fetch> to download it again."
-
-  fetch:
-    preconditions:
-      - sh: '! test -d {{ .TOOLCHAIN_PATH }}'
-        msg: "{{ .TOOLCHAIN_PATH }} Toolchain directory already exists. Run <task destroy fetch> if you want to download it again."
-    cmds:
-      - mkdir -p {{ .TOOLCHAIN_PATH }}
-      - |
-        cd $(mktemp -d)
-        wget --no-verbose -O toolchain.tar.xz {{ .TOOLCHAIN_URL }}
-        tar xf toolchain.tar.xz --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
-      - task: check-toolchain
-
     requires:
       vars:
         - name: DISTRO_BASE
           enum: [ ubuntu, debian ]
         - name: DISTRO_SUITE
           enum:
-            - jammy     # Ubuntu 22
-            - noble     # Ubuntu 24
-            - bullseye  # Debian 11
-            - bookworm  # Debian 12
+            - jammy     # Ubuntu 22.04, GLIBC 2.35
+            - noble     # Ubuntu 24.04, GLIBC 2.39
+            - bullseye  # Debian 11, GLIBC 2.31
+            - bookworm  # Debian 12, GLIBC 2.36
+
+  fetch:
+    silent: true
+    preconditions:
+      - sh: '! test -d {{ .TOOLCHAIN_PATH }}'
+        msg: "{{ .TOOLCHAIN_PATH }} Toolchain directory already exists. Run <task destroy fetch> if you want to download it again."
+    cmds:
+      - echo Downloading toolchain...
+      - mkdir -p {{ .TOOLCHAIN_PATH }}
+      - |
+        cd $(mktemp -d)
+        wget --no-verbose -O toolchain.tar.xz {{ .TOOLCHAIN_URL }}
+        tar xf toolchain.tar.xz --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
+      - echo Downloading scripts...
+      - mkdir -p build/scripts
+      - wget --no-verbose -O {{ .SYMLINK_FIXER_PATH }} https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py
+      - chmod +x {{ .SYMLINK_FIXER_PATH }}
 
   source:
     silent: true
     cmds:
-      - task: check-toolchain
+      - task: healthcheck
       - echo '# Run <eval "$(task source)"> to export following environment variables to your shell'
       - echo
-      - echo export SDKTARGETSYSROOT='"{{ .TOOLCHAIN_PATH }}/{{ .TARGET_TRIPLET }}/libc"'
+      - echo export SDKTARGETSYSROOT='"{{ .SYSROOT_PATH }}"'
       - echo
       - echo export AR='{{ .TARGET_TRIPLET }}-ar'
       - echo export ARCH='arm64'
       - echo export AS='{{ .TARGET_TRIPLET }}-as'
-      - echo export CC='"{{ .TARGET_TRIPLET }}-gcc  --sysroot=$SDKTARGETSYSROOT"'
-      - echo export CFLAGS='" -O2 -g  -pipe"'
+      - echo export CC='"{{ .TARGET_TRIPLET }}-gcc --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CFLAGS='" -O2 -g -pipe"'
       - echo export CONFIGURE_FLAGS='"--target={{ .TARGET_TRIPLET }} --host={{ .TARGET_TRIPLET }} --build=x86_64-linux --with-libtool-sysroot=$SDKTARGETSYSROOT"'
-      - echo export CPP='"{{ .TARGET_TRIPLET }}-gcc -E  --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CPP='"{{ .TARGET_TRIPLET }}-gcc -E --sysroot=$SDKTARGETSYSROOT"'
       - echo export CPPFLAGS='""'
       - echo export CROSS_COMPILE='{{ .TARGET_TRIPLET }}-'
-      - echo export CXX='"{{ .TARGET_TRIPLET }}-g++  --sysroot=$SDKTARGETSYSROOT"'
-      - echo export CXXFLAGS='" -O2 -g  -pipe"'
+      - echo export CXX='"{{ .TARGET_TRIPLET }}-g++ --sysroot=$SDKTARGETSYSROOT"'
+      - echo export CXXFLAGS='" -O2 -g -pipe"'
       - echo export GDB='{{ .TARGET_TRIPLET }}-gdb'
       - echo export KCFLAGS='--sysroot=$SDKTARGETSYSROOT'
       - echo export LD='{{ .TARGET_TRIPLET }}-ld'
-      - echo export LDFLAGS='"-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed  -Wl,-z,relro,-z,now"'
+      - echo export LDFLAGS='"-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed -Wl,-z,relro,-z,now -L$SDKTARGETSYSROOT/lib/aarch64-linux-gnu -L$SDKTARGETSYSROOT/usr/lib/aarch64-linux-gnu"'
       - echo export NM='{{ .TARGET_TRIPLET }}-nm'
       - echo export OBJCOPY='{{ .TARGET_TRIPLET }}-objcopy'
       - echo export OBJDUMP='{{ .TARGET_TRIPLET }}-objdump'
@@ -103,3 +119,10 @@ tasks:
       - echo export READELF='{{ .TARGET_TRIPLET }}-readelf'
       - echo export STRIP='{{ .TARGET_TRIPLET }}-strip'
       - echo export TARGET_PREFIX='{{ .TARGET_TRIPLET }}-'
+
+  example:
+    silent: true
+    cmds:
+      - sudo rm -f {{ .DEBOS_PATH }}/root/usr/local/bin/hello
+      - make -C example clean hello
+      - sudo cp example/hello {{ .DEBOS_PATH }}/root/usr/local/bin

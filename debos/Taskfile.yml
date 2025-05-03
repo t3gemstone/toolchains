@@ -1,0 +1,89 @@
+# T3 Foundation Gemstone Project [t3gemstone.org]
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3'
+
+tasks:
+
+  docker-build:
+    internal: true
+    silent: true
+    cmds:
+      - mkdir -p build/src
+      - |
+        cd build/src
+        if cd debos; then git fetch; else git clone https://github.com/t3gemstone/debos.git debos; fi
+        git checkout -f origin/{{ .DEBOS_VERSION }}
+        docker build --tag t3gemstone/debos:{{ .DEBOS_VERSION }} --file docker/Dockerfile .
+
+  docker-run:
+    internal: true
+    silent: true
+    vars:
+      DOCKER_OPTIONS: '{{ default "" .DOCKER_OPTIONS }}'
+      PROGRAM_OPTIONS: '{{ default "" .PROGRAM_OPTIONS }}'
+    cmds:
+      - task: docker-build
+      - docker run
+          --rm
+          --privileged
+          --interactive
+          --tty
+          --workdir /recipes
+          --volume ./debos/recipes:/recipes
+          --volume {{ .DEBOS_PATH }}:/debos
+          --security-opt label=disable
+          --security-opt apparmor=unconfined
+          --cgroupns=host
+          {{ .DOCKER_OPTIONS }}
+          t3gemstone/debos:{{ .DEBOS_VERSION }} {{ .PROGRAM_OPTIONS }}
+
+  create:
+    silent: true
+    vars: { RECIPE_NAME: '{{ .RECIPE_NAME | default "rootfs.yml" }}' }
+    cmds:
+      - task: docker-run
+        vars: {
+          DOCKER_OPTIONS: '--entrypoint /usr/local/bin/debos',
+          PROGRAM_OPTIONS:
+           '--disable-fakemachine
+            --rootdir=/debos
+            --artifactdir=/debos
+            --scratchdir=/debos
+            --template-var="base:{{ .DISTRO_BASE }}"
+            --template-var="suite:{{ .DISTRO_SUITE }}"
+            {{ .RECIPE_NAME }}'
+        }
+
+  chroot:
+    silent: true
+    cmds:
+      - task: docker-run
+        vars: {
+          DOCKER_OPTIONS: '--entrypoint /bin/bash',
+          PROGRAM_OPTIONS: '-c "chroot /debos/root /bin/bash"'
+        }
+
+  sysroot:
+    silent: true
+    cmds:
+      - |
+        DIRS_TO_COPY=(
+            "/usr/include/"
+            "/usr/lib/"
+            "/usr/local/include/"
+            "/usr/local/lib/"
+            "/usr/share/pkgconfig/"
+        )
+
+        for dir in "${DIRS_TO_COPY[@]}"; do
+            if [ -d "{{ .DEBOS_PATH }}/root$dir" ]; then
+                echo "Copying $dir..."
+                rsync --archive --sparse --delete --mkpath "{{ .DEBOS_PATH }}/root$dir" "{{ .SYSROOT_PATH }}$dir"
+            else
+                echo "Warning: Directory {{ .DEBOS_PATH }}/root$dir does not exist, skipping."
+            fi
+        done
+
+      - '{{ .SYMLINK_FIXER_PATH }} {{ .SYSROOT_PATH }} >/dev/null'
+      - ln -sf usr/lib "{{ .SYSROOT_PATH }}/lib"

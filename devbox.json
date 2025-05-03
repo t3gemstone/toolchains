@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
+  "packages": [
+    "go-task@latest",
+    "wget@latest",
+    "rsync@latest"
+  ],
+  "shell": {
+    "init_hook": [
+      "source <(devbox completion $(basename $SHELL))",
+      "source <(task --completion $(basename $SHELL))",
+      "export PS1='📦 devbox:\\[\\033[01;34m\\]\\W\\[\\033[00m\\]> '",
+      "DEVBOX_ENV_FILE=$DEVBOX_PROJECT_ROOT/.devbox/.env",
+      "touch $DEVBOX_ENV_FILE && source $DEVBOX_ENV_FILE"
+    ]
+  }
+}
