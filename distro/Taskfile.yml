@@ -3,22 +3,18 @@
 
 version: '3'
 
+vars:
+  DEBOS_VERSION: '{{ .DEBOS_VERSION | default "v1.1.3-custom" }}'
+
 tasks:
 
   docker-build:
     internal: true
-    silent: true
     cmds:
-      - mkdir -p build/src
-      - |
-        cd build/src
-        if cd debos; then git fetch; else git clone https://github.com/t3gemstone/debos.git debos; fi
-        git checkout -f origin/{{ .DEBOS_VERSION }}
-        docker build --tag t3gemstone/debos:{{ .DEBOS_VERSION }} --file docker/Dockerfile .
+      - cd src/debos && docker build --tag t3gemstone/debos:{{ .DEBOS_VERSION }} --file docker/Dockerfile .
 
   docker-run:
     internal: true
-    silent: true
     vars:
       DOCKER_OPTIONS: '{{ default "" .DOCKER_OPTIONS }}'
       PROGRAM_OPTIONS: '{{ default "" .PROGRAM_OPTIONS }}'
@@ -30,10 +26,11 @@ tasks:
           --interactive
           --tty
           --workdir /recipes
-          --volume ./debos/recipes:/recipes
+          --volume ./distro:/recipes
           --volume {{ .DEBOS_PATH }}:/debos
-          --security-opt label=disable
+          --cap-add=SYS_ADMIN
           --security-opt apparmor=unconfined
+          --security-opt label=disable
           --cgroupns=host
           {{ .DOCKER_OPTIONS }}
           t3gemstone/debos:{{ .DEBOS_VERSION }} {{ .PROGRAM_OPTIONS }}
@@ -52,6 +49,7 @@ tasks:
             --scratchdir=/debos
             --template-var="base:{{ .DISTRO_BASE }}"
             --template-var="suite:{{ .DISTRO_SUITE }}"
+            --template-var="type:{{ .DISTRO_TYPE }}"
             {{ .RECIPE_NAME }}'
         }
 

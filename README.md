@@ -8,7 +8,7 @@
 
 # T3 Gemstone Toolchains
 
- [![T3 Foundation](./.meta/t3-foundation.svg)](https://www.t3vakfi.org/en) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Built with Distrobox](https://img.shields.io/badge/Built_with-distrobox-red)](https://github.com/89luca89/distrobox) [![Built with Devbox](https://www.jetify.com/img/devbox/shield_galaxy.svg)](https://www.jetify.com/devbox/docs/contributor-quickstart/)
+ [![T3 Foundation](./.meta/t3-foundation.svg)](https://www.t3vakfi.org/en) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Built with Devbox](https://www.jetify.com/img/devbox/shield_galaxy.svg)](https://www.jetify.com/devbox/docs/contributor-quickstart/)
 
 ## What is it?
 
@@ -43,12 +43,12 @@ Toolchain includes tools that are needed for cross compiling projects such as `g
 ##### 4. Create sysroot for the cross compiler.
 
 This step creates a minimal system based on Debian or Ubuntu using `debos` tool. You can change the packages that should be
-included in the sysroot by modifying [rootfs.yml](./debos/recipes/rootfs.yml). After creating rootfs, folders needed for
-cross compilation are copied into [sysroot](./build/sysroots) folder and any broken symlinks are fixed.
+included in the sysroot by modifying [rootfs.yml](./distro/rootfs.yml). After creating rootfs, folders needed for
+cross compilation are copied into [sysroot](./build/{distro}/sysroots) folder and any broken symlinks are fixed.
 
 ```bash
-📦 devbox:sdk> task debos:create
-📦 devbox:sdk> task debos:sysroot
+📦 devbox:sdk> task distro:create
+📦 devbox:sdk> task distro:sysroot
 ```
 
 ##### 5. Compile example project using the toolchain.
@@ -60,13 +60,13 @@ cross compilation are copied into [sysroot](./build/sysroots) folder and any bro
 
 ##### 5. Run compiled binary.
 
-After completing Step 5, a binary called `hello` should be created and then copied into the debos rootfs
+After completing Step 5, a binary called `hello` should be created and then copied into the distro rootfs
 created earlier.
 
 You can run this binary on your host PC with the help of `chroot` and `qemu-user-static` tools.
 
 ```bash
-📦 devbox:sdk> task debos:chroot
+📦 devbox:sdk> task distro:chroot
 root@ubuntu-jammy:$ hello
 > Hello, world!
 ```

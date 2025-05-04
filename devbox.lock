@@ -2,8 +2,8 @@
   "lockfile_version": "1",
   "packages": {
     "github:NixOS/nixpkgs/nixpkgs-unstable": {
-      "last_modified": "2025-04-17T05:47:26Z",
-      "resolved": "github:NixOS/nixpkgs/ebe4301cbd8f81c4f8d3244b3632338bbeb6d49c?lastModified=1744868846&narHash=sha256-5RJTdUHDmj12Qsv7XOhuospjAjATNiTMElplWnJE9Hs%3D"
+      "last_modified": "2025-05-03T19:26:05Z",
+      "resolved": "github:NixOS/nixpkgs/f21e4546e3ede7ae34d12a84602a22246b31f7e0?lastModified=1746300365&narHash=sha256-thYTdWqCRipwPRxWiTiH1vusLuAy0okjOyzRx4hLWh4%3D"
     },
     "go-task@latest": {
       "last_modified": "2025-04-03T14:08:01Z",
@@ -50,6 +50,166 @@
             }
           ],
           "store_path": "/nix/store/1ahssbg018nlvadzzwnydx4ky0bpng7a-go-task-3.41.0"
+        }
+      }
+    },
+    "rsync@latest": {
+      "last_modified": "2025-03-11T17:52:14Z",
+      "resolved": "github:NixOS/nixpkgs/0d534853a55b5d02a4ababa1d71921ce8f0aee4c#rsync",
+      "source": "devbox-search",
+      "version": "3.4.1",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qiq98vlv9gf9aiarmi6rz9y2cqdsjvlg-rsync-3.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/qiq98vlv9gf9aiarmi6rz9y2cqdsjvlg-rsync-3.4.1"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/ifvzhlyb08jg9ds7lzwyv5vch7185rf6-rsync-3.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/ifvzhlyb08jg9ds7lzwyv5vch7185rf6-rsync-3.4.1"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/cn12w1q2kjvs7h4lfz2nmv3w2pypqhdi-rsync-3.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/cn12w1q2kjvs7h4lfz2nmv3w2pypqhdi-rsync-3.4.1"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/69c5vqpb58dckbizfajqwl280bkpwf7g-rsync-3.4.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/69c5vqpb58dckbizfajqwl280bkpwf7g-rsync-3.4.1"
+        }
+      }
+    },
+    "vcstool@latest": {
+      "last_modified": "2025-03-16T16:17:41Z",
+      "resolved": "github:NixOS/nixpkgs/8f76cf16b17c51ae0cc8e55488069593f6dab645#vcstool",
+      "source": "devbox-search",
+      "version": "0.3.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/gfa7q49vg5lzc040q6ammjbkbifnbh0r-vcstool-0.3.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/nfxx5yjn24vcmqpcsnlniwpwcn5x5k1r-vcstool-0.3.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/gfa7q49vg5lzc040q6ammjbkbifnbh0r-vcstool-0.3.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nsmkmy3m7gaz602dzkjsbhs91bbxhfsp-vcstool-0.3.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/94x9x0idx78chnvw4l857k0vkdy8q3yf-vcstool-0.3.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/nsmkmy3m7gaz602dzkjsbhs91bbxhfsp-vcstool-0.3.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/d43vnpj841npxpps2308p3lml33lq09m-vcstool-0.3.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/qz5n5zhj4ifzw8b58l49c1y9pma0hwsp-vcstool-0.3.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/d43vnpj841npxpps2308p3lml33lq09m-vcstool-0.3.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/pfy6692xk55l0an5551lwbgjngj1c6jx-vcstool-0.3.0",
+              "default": true
+            },
+            {
+              "name": "dist",
+              "path": "/nix/store/kla3xmq9pg0qy2g58iiy201zsb3rc8r4-vcstool-0.3.0-dist"
+            }
+          ],
+          "store_path": "/nix/store/pfy6692xk55l0an5551lwbgjngj1c6jx-vcstool-0.3.0"
+        }
+      }
+    },
+    "wget@latest": {
+      "last_modified": "2025-04-01T11:22:06Z",
+      "resolved": "github:NixOS/nixpkgs/a4325209863278fc096401bfe9e0a9da34aa9e00#wget",
+      "source": "devbox-search",
+      "version": "1.25.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/bhaparlbs0ffqgjjsjz319pz95fml4lq-wget-1.25.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/bhaparlbs0ffqgjjsjz319pz95fml4lq-wget-1.25.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/3606kjc3iz13j090k9c8lcfrqr6zwiba-wget-1.25.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/3606kjc3iz13j090k9c8lcfrqr6zwiba-wget-1.25.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/c52p492zwbc3hlqcsw4glwrgl34dcvqc-wget-1.25.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/c52p492zwbc3hlqcsw4glwrgl34dcvqc-wget-1.25.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/jck95mr008zm5c5w8cz2rp9ghl57vyh4-wget-1.25.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/jck95mr008zm5c5w8cz2rp9ghl57vyh4-wget-1.25.0"
         }
       }
     }
