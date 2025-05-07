@@ -30,7 +30,9 @@ tasks:
     silent: true
     cmds:
       - task --list-all --summary
-      - echo -e "\nEnvironment:\n"
+      - echo
+      - echo "Environment:"
+      - echo
       - echo "  DISTRO_BASE         = '{{ .DISTRO_BASE }}'"
       - echo "  DISTRO_SUITE        = '{{ .DISTRO_SUITE }}'"
       - echo "  DISTRO_TYPE         = '{{ .DISTRO_TYPE }}'"
@@ -41,7 +43,7 @@ tasks:
       - echo "  DEBOS_PATH          = '{{ .DEBOS_PATH }}'"
       - echo "  DEBOS_VERSION       = '{{ .DEBOS_VERSION }}'"
       - echo "  SYMLINK_FIXER_PATH  = '{{ .SYMLINK_FIXER_PATH }}'"
-      - echo " "
+      - echo
 
   destroy:
     prompt: '{{ .TOOLCHAIN_PATH }} The toolchain in this path will be deleted. Do you want to continue?'
@@ -83,7 +85,7 @@ tasks:
           URL: '{{ get .URLS .DISTRO_SUITE }}'
           PATH: 'build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz'
       - mkdir -p {{ .TOOLCHAIN_PATH }}
-      - tar xf build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
+      - tar xf build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz --skip-old-files --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
       - task: wget
         vars:
           URL: '{{ get .URLS "symlinkfixer" }}'
