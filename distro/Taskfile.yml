@@ -12,8 +12,11 @@ tasks:
   docker-build:
     internal: true
     cmds:
+      - task: :fetch
       - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes # fix exec format error when using chroot
       - cd src/debos && docker build --tag t3gemstone/debos:{{ .DEBOS_VERSION }} --file docker/Dockerfile .
+    status:
+      - docker image inspect t3gemstone/debos:{{ .DEBOS_VERSION }}
 
   docker-run:
     internal: true
@@ -55,6 +58,7 @@ tasks:
             --template-var="hostname:{{ .DISTRO_HOSTNAME }}"
             {{ .RECIPE_NAME }}'
         }
+      - task: sysroot
 
   chroot:
     silent: true
@@ -62,12 +66,13 @@ tasks:
       - task: docker-run
         vars: {
           DOCKER_OPTIONS: '--entrypoint /bin/bash',
-          PROGRAM_OPTIONS: '-c "chroot /debos/root /bin/bash"'
+          PROGRAM_OPTIONS: '-c "hostname {{ .DISTRO_HOSTNAME }} && mount proc /debos/root/proc -t proc && mount sysfs /debos/root/sys -t sysfs && chroot /debos/root /bin/bash --rcfile /root/.profile"'
         }
 
   sysroot:
     silent: true
     cmds:
+      - task: :fetch
       - |
         DIRS_TO_COPY=(
             "/usr/include/"

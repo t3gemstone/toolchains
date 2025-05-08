@@ -9,8 +9,10 @@ vars:
   DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
   DISTRO_TYPE: '{{ .DISTRO_TYPE | default "minimal" }}'
   BUILDDIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
-  TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchains'
-  SYSROOT_PATH: '{{ .BUILDDIR }}/sysroots'
+  TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchain'
+  SYSROOT_PATH: '{{ .BUILDDIR }}/sysroot'
+  # If you want to use libs from the toolchain uncomment following line:
+  # SYSROOT_PATH: '{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc'
   DEBOS_PATH: '{{ .BUILDDIR }}/debos'
   SYMLINK_FIXER_PATH: '{{ .ROOT_DIR }}/build/downloads/symlink-fixer'
   URLS: {
@@ -50,25 +52,6 @@ tasks:
     cmds:
       - 'rm -rf {{ .TOOLCHAIN_PATH }}'
 
-  healthcheck:
-    internal: true
-    silent: true
-    preconditions:
-      - sh: 'test "$({{ .TOOLCHAIN_PATH }}/bin/{{ .TOOLCHAIN_ARCH }}-gcc -dumpmachine)" == "{{ .TOOLCHAIN_ARCH }}"'
-        msg: "{{ .TOOLCHAIN_PATH }} Toolchain is not installed properly. Run <task destroy fetch> to download it again."
-    requires:
-      vars:
-        - name: DISTRO_BASE
-          enum: [ ubuntu, debian ]
-        - name: DISTRO_TYPE
-          enum: [ minimal, qt ]
-        - name: DISTRO_SUITE
-          enum:
-            - jammy     # Ubuntu 22.04, GLIBC 2.35
-            - noble     # Ubuntu 24.04, GLIBC 2.39
-            - bullseye  # Debian 11, GLIBC 2.31
-            - bookworm  # Debian 12, GLIBC 2.36
-
   wget:
     internal: true
     cmds:
@@ -92,11 +75,27 @@ tasks:
           PATH: '{{ .SYMLINK_FIXER_PATH }}'
       - chmod +x '{{ .SYMLINK_FIXER_PATH }}'
       - vcs import . < repos.yml
+    requires:
+      vars:
+        - name: DISTRO_BASE
+          enum: [ ubuntu, debian ]
+        - name: DISTRO_TYPE
+          enum: [ minimal, qt ]
+        - name: DISTRO_SUITE
+          enum:
+            - jammy     # Ubuntu 22.04, GLIBC 2.35
+            - noble     # Ubuntu 24.04, GLIBC 2.39
+            - bullseye  # Debian 11, GLIBC 2.31
+            - bookworm  # Debian 12, GLIBC 2.36
+    status:
+      - test "$({{ .TOOLCHAIN_PATH }}/bin/{{ .TOOLCHAIN_ARCH }}-gcc -dumpmachine)" == "{{ .TOOLCHAIN_ARCH }}"
+      - test -x "{{ .SYMLINK_FIXER_PATH }}"
+      - test -d src/debos
 
   source:
     silent: true
     cmds:
-      - task: healthcheck
+      - task: fetch
       - echo '# Run <eval "$(task source)"> to export following environment variables to your shell'
       - echo
       - echo export SDKTARGETSYSROOT='"{{ .SYSROOT_PATH }}"'
@@ -129,6 +128,9 @@ tasks:
 
   example:
     cmds:
+      - task: fetch
       - sudo rm -f {{ .DEBOS_PATH }}/root/usr/local/bin/hello
-      - make -C example clean hello
-      - sudo cp example/hello {{ .DEBOS_PATH }}/root/usr/local/bin
+      - |
+        eval "$(task source)"
+        make -C example clean hello
+        sudo cp example/hello {{ .DEBOS_PATH }}/root/usr/local/bin

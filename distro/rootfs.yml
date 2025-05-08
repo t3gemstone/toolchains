@@ -54,6 +54,7 @@ actions:
       - file
       - iputils-ping
       - less
+      - screenfetch
       - sudo
       - wget
 
