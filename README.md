@@ -44,7 +44,7 @@ Toolchain includes tools that are needed for cross compiling projects such as `g
 
 This step creates a minimal system based on Debian or Ubuntu using `debos` tool. You can change the packages that should be
 included in the sysroot by modifying [rootfs.yml](./distro/rootfs.yml). After creating rootfs, folders needed for
-cross compilation are copied into [sysroot](./build/{distro}/sysroots) folder and any broken symlinks are fixed.
+cross compilation are copied into `./build/{distro}/sysroot` folder and any broken symlinks are fixed.
 
 ```bash
 📦 devbox:sdk> task distro:create

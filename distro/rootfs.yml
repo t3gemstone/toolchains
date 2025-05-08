@@ -9,6 +9,7 @@
 {{- $base := or .base "ubuntu" -}}
 {{- $suite := or .suite "jammy" -}}
 {{- $type := or .type "minimal" -}}
+{{- $hostname := or .hostname (printf "%s-%s" $base $suite) -}}
 
 architecture: arm64
 
@@ -26,6 +27,22 @@ actions:
     components: [ main, multiverse, universe ]
     mirror: 'https://ports.ubuntu.com/ubuntu-ports'
 {{ end }}
+
+  - action: run
+    description: Configure system
+    chroot: true
+    command: |
+      # Setup hostname
+      echo "{{ $hostname }}" >/etc/hostname
+      echo "127.0.0.1	localhost {{ $hostname }}" >/etc/hosts
+
+      # Setup DNS
+      rm -f /etc/resolv.conf
+      echo "1.1.1.1" >/etc/resolv.conf
+      echo "1.0.0.1" >>/etc/resolv.conf
+
+      # Setup login
+      echo "command -v screenfetch && screenfetch" >> /root/.profile
 
   - action: apt
     description: Install tools
@@ -68,16 +85,10 @@ actions:
 {{ end }}
 
   - action: run
-    description: Setup host
-    chroot: true
-    command: |
-      echo "{{ $base }}-{{ $suite }}" >/etc/hostname
-      echo "127.0.0.1	localhost {{ $base }}-{{ $suite }}" >/etc/hosts
-
-  - action: run
     description: Add symlinks needed for cross compilation
     chroot: true
     command: |
+      hostname {{ $hostname }} # needed for sudo
       wget --no-clobber --no-verbose -O /usr/local/bin/SSymlinker https://raw.githubusercontent.com/abhiTronix/raspberry-pi-cross-compilers/master/utils/SSymlinker
       chmod +x /usr/local/bin/SSymlinker
       SSymlinker -s /usr/include/aarch64-linux-gnu/asm -d /usr/include
