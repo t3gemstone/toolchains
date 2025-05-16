@@ -8,7 +8,6 @@
   ],
   "shell": {
     "init_hook": [
-      "export TASK_X_MAP_VARIABLES=1",
       "source <(devbox completion $(basename $SHELL))",
       "source <(task --completion $(basename $SHELL))",
       "source $DEVBOX_PACKAGES_DIR/share/vcstool-completion/vcs.$(basename $SHELL)",

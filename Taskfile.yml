@@ -10,18 +10,19 @@ vars:
   DISTRO_TYPE: '{{ .DISTRO_TYPE | default "minimal" }}'
   BUILDDIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
   TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchain'
-  SYSROOT_PATH: '{{ .BUILDDIR }}/sysroot'
   # If you want to use libs from the toolchain uncomment following line:
   # SYSROOT_PATH: '{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc'
+  SYSROOT_PATH: '{{ .BUILDDIR }}/sysroot'
   DEBOS_PATH: '{{ .BUILDDIR }}/debos'
   SYMLINK_FIXER_PATH: '{{ .ROOT_DIR }}/build/downloads/symlink-fixer'
-  URLS: {
-    jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
-    noble: 'https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
-    bullseye: 'https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
-    bookworm: 'https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
-    symlinkfixer: 'https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py'
-  }
+  URLS:
+    map: {
+      jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
+      noble: 'https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
+      bullseye: 'https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
+      bookworm: 'https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
+      symlinkfixer: 'https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py'
+    }
 
 includes:
   distro: distro
