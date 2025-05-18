@@ -4,24 +4,30 @@
 version: '3'
 
 vars:
+  VERSION: '1.0.1'
   TOOLCHAIN_ARCH: aarch64-none-linux-gnu
   DISTRO_BASE: '{{ .DISTRO_BASE | default "ubuntu" }}'
   DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
   DISTRO_TYPE: '{{ .DISTRO_TYPE | default "minimal" }}'
+  DOWNLOADDIR: '{{ .ROOT_DIR }}/build/downloads'
   BUILDDIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
   TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchain'
   # If you want to use libs from the toolchain uncomment following line:
   # SYSROOT_PATH: '{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc'
   SYSROOT_PATH: '{{ .BUILDDIR }}/sysroot'
   DEBOS_PATH: '{{ .BUILDDIR }}/debos'
-  SYMLINK_FIXER_PATH: '{{ .ROOT_DIR }}/build/downloads/symlink-fixer'
+  SYMLINK_FIXER_PATH: '{{ .DOWNLOADDIR }}/symlink-fixer'
+  TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{.VERSION}}'
+  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{.VERSION}}.tar.xz'
   URLS:
     map: {
       jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
       noble: 'https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
       bullseye: 'https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
       bookworm: 'https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
-      symlinkfixer: 'https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py'
+      symlinkfixer: 'https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py',
+      texas_j722_rtos_sdk: 'https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-1bSfTnVt5d/10.01.00.04/ti-processor-sdk-rtos-j722s-evm-10_01_00_04.tar.gz',
+      texas_j722_mcusw_sdk: 'https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-1bSfTnVt5d/10.01.00.04/MCUSW_J722S_10.01.00.03.zip',
     }
 
 includes:
@@ -93,6 +99,18 @@ tasks:
       - test -x "{{ .SYMLINK_FIXER_PATH }}"
       - test -d src/debos
 
+  fetch-ti:
+    silent: true
+    cmds:
+      - task: wget
+        vars:
+          URL: '{{ get .URLS "texas_j722_rtos_sdk" }}'
+          PATH: '{{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz'
+      - task: wget
+        vars:
+          URL: '{{ get .URLS "texas_j722_mcusw_sdk" }}'
+          PATH: '{{ .DOWNLOADDIR }}/mcusw-j722s.zip'
+
   source:
     silent: true
     cmds:
@@ -135,3 +153,18 @@ tasks:
         eval "$(task source)"
         make -C example clean hello
         sudo cp example/hello {{ .DEBOS_PATH }}/root/usr/local/bin
+
+  create:tarball:
+    summary: 'Pack all-in-one toolchain tarball'
+    cmds:
+      - mkdir -p {{.TARBALL_DIR}}
+      - |
+        sudo cp -a {{.SYSROOT_PATH}} {{.TARBALL_DIR}}/sysroot
+        sudo cp -a {{ .DEBOS_PATH }}/root {{.TARBALL_DIR}}/rootfs
+        sudo cp -a {{ .TOOLCHAIN_PATH }} {{.TARBALL_DIR}}/
+      - mkdir -p {{.TARBALL_DIR}}/ti
+      - test -e {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz && tar -xf {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{.TARBALL_DIR}}/ti || true
+      - test -e {{ .DOWNLOADDIR }}/mcusw-j722s.zip && unzip -n {{ .DOWNLOADDIR }}/mcusw-j722s.zip -d {{.TARBALL_DIR}}/ti/ || true
+      - sudo tar czf {{.TARBALL_FILE_PATH}} -C {{.TARBALL_DIR}} .
+      - sudo chown $USER:$USER {{.TARBALL_FILE_PATH}}
+      - sudo rm -rf {{.TARBALL_DIR}}
