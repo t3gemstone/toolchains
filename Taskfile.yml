@@ -12,13 +12,17 @@ vars:
   DOWNLOADDIR: '{{ .ROOT_DIR }}/build/downloads'
   BUILDDIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
   TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchain'
-  # If you want to use libs from the toolchain uncomment following line:
-  # SYSROOT_PATH: '{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc'
-  SYSROOT_PATH: '{{ .BUILDDIR }}/sysroot'
+  SYSROOT_PATH:
+    sh: |
+      if [ -d "{{ .BUILDDIR }}/sysroot" ]; then
+        echo "{{ .BUILDDIR }}/sysroot"
+      else
+        echo "{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc"
+      fi
   DEBOS_PATH: '{{ .BUILDDIR }}/debos'
   SYMLINK_FIXER_PATH: '{{ .DOWNLOADDIR }}/symlink-fixer'
   TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{.VERSION}}'
-  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{.VERSION}}.tar.xz'
+  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.xz'
   URLS:
     map: {
       jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
@@ -157,14 +161,14 @@ tasks:
   create:tarball:
     summary: 'Pack all-in-one toolchain tarball'
     cmds:
-      - mkdir -p {{.TARBALL_DIR}}
+      - mkdir -p {{ .TARBALL_DIR }}
       - |
-        sudo cp -a {{.SYSROOT_PATH}} {{.TARBALL_DIR}}/sysroot
-        sudo cp -a {{ .DEBOS_PATH }}/root {{.TARBALL_DIR}}/rootfs
-        sudo cp -a {{ .TOOLCHAIN_PATH }} {{.TARBALL_DIR}}/
-      - mkdir -p {{.TARBALL_DIR}}/ti
-      - test -e {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz && tar -xf {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{.TARBALL_DIR}}/ti || true
+        sudo cp -a {{ .SYSROOT_PATH }} {{ .TARBALL_DIR }}/sysroot
+        sudo cp -a {{ .DEBOS_PATH }}/root {{ .TARBALL_DIR }}/rootfs
+        sudo cp -a {{ .TOOLCHAIN_PATH }} {{ .TARBALL_DIR }}/
+      - mkdir -p {{ .TARBALL_DIR }}/ti
+      - test -e {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz && tar -xf {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{ .TARBALL_DIR }}/ti || true
       - test -e {{ .DOWNLOADDIR }}/mcusw-j722s.zip && unzip -n {{ .DOWNLOADDIR }}/mcusw-j722s.zip -d {{.TARBALL_DIR}}/ti/ || true
-      - sudo tar czf {{.TARBALL_FILE_PATH}} -C {{.TARBALL_DIR}} .
-      - sudo chown $USER:$USER {{.TARBALL_FILE_PATH}}
-      - sudo rm -rf {{.TARBALL_DIR}}
+      - sudo tar czf {{ .TARBALL_FILE_PATH }} -C {{ .TARBALL_DIR }} .
+      - sudo chown $USER:$USER {{ .TARBALL_FILE_PATH }}
+      - sudo rm -rf {{ .TARBALL_DIR }}
