@@ -9,20 +9,21 @@ vars:
   DISTRO_BASE: '{{ .DISTRO_BASE | default "ubuntu" }}'
   DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
   DISTRO_TYPE: '{{ .DISTRO_TYPE | default "minimal" }}'
-  DOWNLOADDIR: '{{ .ROOT_DIR }}/build/downloads'
-  BUILDDIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
-  TOOLCHAIN_PATH: '{{ .BUILDDIR }}/toolchain'
-  SYSROOT_PATH:
+  DOWNLOAD_DIR: '{{ .ROOT_DIR }}/build/downloads'
+  BUILD_DIR: '{{ .ROOT_DIR }}/build/{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+  TOOLCHAIN_DIR: '{{ .BUILD_DIR }}/toolchain'
+  SYSROOT_REL_PATH:
     sh: |
-      if [ -d "{{ .BUILDDIR }}/sysroot" ]; then
-        echo "{{ .BUILDDIR }}/sysroot"
+      if [ -d "{{ .BUILD_DIR }}/sysroot" ]; then
+        echo "sysroot"
       else
-        echo "{{ .BUILDDIR }}/toolchain/{{ .TOOLCHAIN_ARCH }}/libc"
+        echo "toolchain/{{ .TOOLCHAIN_ARCH }}/libc"
       fi
-  DEBOS_PATH: '{{ .BUILDDIR }}/debos'
-  SYMLINK_FIXER_PATH: '{{ .DOWNLOADDIR }}/symlink-fixer'
+  ENV_PATH: '{{ .BUILD_DIR }}/env'
+  DEBOS_DIR: '{{ .BUILD_DIR }}/debos'
+  SYMLINK_FIXER_PATH: '{{ .DOWNLOAD_DIR }}/symlink-fixer'
   TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{.VERSION}}'
-  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.xz'
+  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.gz'
   URLS:
     map: {
       jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
@@ -51,17 +52,17 @@ tasks:
       - echo "  DISTRO_TYPE         = '{{ .DISTRO_TYPE }}'"
       - echo "  TOOLCHAIN_ARCH      = '{{ .TOOLCHAIN_ARCH }}'"
       - echo "  TOOLCHAIN_URL       = '{{ get .URLS .DISTRO_SUITE }}"
-      - echo "  TOOLCHAIN_PATH      = '{{ .TOOLCHAIN_PATH }}'"
-      - echo "  SYSROOT_PATH        = '{{ .SYSROOT_PATH }}'"
-      - echo "  DEBOS_PATH          = '{{ .DEBOS_PATH }}'"
+      - echo "  TOOLCHAIN_DIR      = '{{ .TOOLCHAIN_DIR }}'"
+      - echo "  SYSROOT_DIR        = '{{ .BUILD_DIR }}/{{ .SYSROOT_REL_PATH }}'"
+      - echo "  DEBOS_DIR          = '{{ .DEBOS_DIR }}'"
       - echo "  DEBOS_VERSION       = '{{ .DEBOS_VERSION }}'"
       - echo "  SYMLINK_FIXER_PATH  = '{{ .SYMLINK_FIXER_PATH }}'"
       - echo
 
   destroy:
-    prompt: '{{ .TOOLCHAIN_PATH }} The toolchain in this path will be deleted. Do you want to continue?'
+    prompt: '{{ .TOOLCHAIN_DIR }} The toolchain in this path will be deleted. Do you want to continue?'
     cmds:
-      - 'rm -rf {{ .TOOLCHAIN_PATH }}'
+      - 'rm -rf {{ .TOOLCHAIN_DIR }}'
 
   wget:
     internal: true
@@ -78,8 +79,8 @@ tasks:
         vars:
           URL: '{{ get .URLS .DISTRO_SUITE }}'
           PATH: 'build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz'
-      - mkdir -p {{ .TOOLCHAIN_PATH }}
-      - tar xf build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz --skip-old-files --strip-components=1 --directory={{ .TOOLCHAIN_PATH }}
+      - mkdir -p {{ .TOOLCHAIN_DIR }}
+      - tar xf build/downloads/{{.TOOLCHAIN_ARCH}}.tar.xz --skip-old-files --strip-components=1 --directory={{ .TOOLCHAIN_DIR }}
       - task: wget
         vars:
           URL: '{{ get .URLS "symlinkfixer" }}'
@@ -99,76 +100,79 @@ tasks:
             - bullseye  # Debian 11, GLIBC 2.31
             - bookworm  # Debian 12, GLIBC 2.36
     status:
-      - test "$({{ .TOOLCHAIN_PATH }}/bin/{{ .TOOLCHAIN_ARCH }}-gcc -dumpmachine)" == "{{ .TOOLCHAIN_ARCH }}"
+      - test "$({{ .TOOLCHAIN_DIR }}/bin/{{ .TOOLCHAIN_ARCH }}-gcc -dumpmachine)" == "{{ .TOOLCHAIN_ARCH }}"
       - test -x "{{ .SYMLINK_FIXER_PATH }}"
       - test -d src/debos
 
   fetch-ti:
     silent: true
     cmds:
+      - rm -rf "{{ .TARBALL_DIR }}/ti"
+      - mkdir -p "{{ .TARBALL_DIR }}/ti"
       - task: wget
         vars:
           URL: '{{ get .URLS "texas_j722_rtos_sdk" }}'
-          PATH: '{{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz'
+          PATH: '{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz'
+      - tar xf {{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{ .TARBALL_DIR }}/ti
       - task: wget
         vars:
           URL: '{{ get .URLS "texas_j722_mcusw_sdk" }}'
-          PATH: '{{ .DOWNLOADDIR }}/mcusw-j722s.zip'
+          PATH: '{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip'
+      - unzip -n {{ .DOWNLOAD_DIR }}/mcusw-j722s.zip -d {{.TARBALL_DIR}}/ti/
+    status:
+      - test -f "{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip"
+      - test -f "{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz"
+      - test -d "{{ .TARBALL_DIR }}/ti"
 
-  source:
+  env:
     silent: true
     cmds:
       - task: fetch
-      - echo '# Run <eval "$(task source)"> to export following environment variables to your shell'
+      - rm -f {{ .ENV_PATH }}
+      - echo '# Run <source {{ .ENV_PATH }}> to export following environment variables to your shell'
       - echo
-      - echo export SDKTARGETSYSROOT='"{{ .SYSROOT_PATH }}"'
-      - echo
-      - echo export AR='{{ .TOOLCHAIN_ARCH }}-ar'
-      - echo export ARCH='arm64'
-      - echo export AS='{{ .TOOLCHAIN_ARCH }}-as'
-      - echo export CC='"{{ .TOOLCHAIN_ARCH }}-gcc --sysroot=$SDKTARGETSYSROOT"'
-      - echo export CFLAGS='" -O2 -g -pipe"'
-      - echo export CONFIGURE_FLAGS='"--target={{ .TOOLCHAIN_ARCH }} --host={{ .TOOLCHAIN_ARCH }} --build=x86_64-linux --with-libtool-sysroot=$SDKTARGETSYSROOT"'
-      - echo export CPP='"{{ .TOOLCHAIN_ARCH }}-gcc -E --sysroot=$SDKTARGETSYSROOT"'
-      - echo export CPPFLAGS='""'
-      - echo export CROSS_COMPILE='{{ .TOOLCHAIN_ARCH }}-'
-      - echo export CXX='"{{ .TOOLCHAIN_ARCH }}-g++ --sysroot=$SDKTARGETSYSROOT"'
-      - echo export CXXFLAGS='" -O2 -g -pipe"'
-      - echo export GDB='{{ .TOOLCHAIN_ARCH }}-gdb'
-      - echo export KCFLAGS='--sysroot=$SDKTARGETSYSROOT'
-      - echo export LD='{{ .TOOLCHAIN_ARCH }}-ld'
-      - echo export LDFLAGS='"-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed -Wl,-z,relro,-z,now -L$SDKTARGETSYSROOT/lib/aarch64-linux-gnu -L$SDKTARGETSYSROOT/usr/lib/aarch64-linux-gnu"'
-      - echo export NM='{{ .TOOLCHAIN_ARCH }}-nm'
-      - echo export OBJCOPY='{{ .TOOLCHAIN_ARCH }}-objcopy'
-      - echo export OBJDUMP='{{ .TOOLCHAIN_ARCH }}-objdump'
-      - echo export PATH='"{{ .TOOLCHAIN_PATH }}/bin:$PATH"'
-      - echo export PKG_CONFIG_PATH='"$SDKTARGETSYSROOT/usr/lib/pkgconfig:$SDKTARGETSYSROOT/usr/share/pkgconfig"'
-      - echo export PKG_CONFIG_SYSROOT_DIR='$SDKTARGETSYSROOT'
-      - echo export RANLIB='{{ .TOOLCHAIN_ARCH }}-ranlib'
-      - echo export READELF='{{ .TOOLCHAIN_ARCH }}-readelf'
-      - echo export STRIP='{{ .TOOLCHAIN_ARCH }}-strip'
-      - echo export TARGET_PREFIX='{{ .TOOLCHAIN_ARCH }}-'
+      - echo '[ -z "${BASH_SOURCE[0]}" ] && ENV_PATH="$(dirname "$(realpath "$0")")" || ENV_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"' | tee -a {{ .ENV_PATH }}
+      - echo export SDKTARGETSYSROOT='"$ENV_PATH/{{ .SYSROOT_REL_PATH }}"' | tee -a {{ .ENV_PATH }}
+      - echo export AR='{{ .TOOLCHAIN_ARCH }}-ar' | tee -a {{ .ENV_PATH }}
+      - echo export ARCH='arm64' | tee -a {{ .ENV_PATH }}
+      - echo export AS='{{ .TOOLCHAIN_ARCH }}-as' | tee -a {{ .ENV_PATH }}
+      - echo export CC='"{{ .TOOLCHAIN_ARCH }}-gcc --sysroot=$SDKTARGETSYSROOT"' | tee -a {{ .ENV_PATH }}
+      - echo export CFLAGS='" -O2 -g -pipe"' | tee -a {{ .ENV_PATH }}
+      - echo export CONFIGURE_FLAGS='"--target={{ .TOOLCHAIN_ARCH }} --host={{ .TOOLCHAIN_ARCH }} --build=x86_64-linux --with-libtool-sysroot=$SDKTARGETSYSROOT"' | tee -a {{ .ENV_PATH }}
+      - echo export CPP='"{{ .TOOLCHAIN_ARCH }}-gcc -E --sysroot=$SDKTARGETSYSROOT"' | tee -a {{ .ENV_PATH }}
+      - echo export CPPFLAGS='""' | tee -a {{ .ENV_PATH }}
+      - echo export CROSS_COMPILE='{{ .TOOLCHAIN_ARCH }}-' | tee -a {{ .ENV_PATH }}
+      - echo export CXX='"{{ .TOOLCHAIN_ARCH }}-g++ --sysroot=$SDKTARGETSYSROOT"' | tee -a {{ .ENV_PATH }}
+      - echo export CXXFLAGS='" -O2 -g -pipe"' | tee -a {{ .ENV_PATH }}
+      - echo export GDB='{{ .TOOLCHAIN_ARCH }}-gdb' | tee -a {{ .ENV_PATH }}
+      - echo export KCFLAGS='--sysroot=$SDKTARGETSYSROOT' | tee -a {{ .ENV_PATH }}
+      - echo export LD='{{ .TOOLCHAIN_ARCH }}-ld' | tee -a {{ .ENV_PATH }}
+      - echo export LDFLAGS='"-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed -Wl,-z,relro,-z,now -L$SDKTARGETSYSROOT/lib/aarch64-linux-gnu -L$SDKTARGETSYSROOT/usr/lib/aarch64-linux-gnu"' | tee -a {{ .ENV_PATH }}
+      - echo export NM='{{ .TOOLCHAIN_ARCH }}-nm' | tee -a {{ .ENV_PATH }}
+      - echo export OBJCOPY='{{ .TOOLCHAIN_ARCH }}-objcopy' | tee -a {{ .ENV_PATH }}
+      - echo export OBJDUMP='{{ .TOOLCHAIN_ARCH }}-objdump' | tee -a {{ .ENV_PATH }}
+      - echo export PATH='"{{ .TOOLCHAIN_DIR }}/bin:$PATH"' | tee -a {{ .ENV_PATH }}
+      - echo export PKG_CONFIG_PATH='"$SDKTARGETSYSROOT/usr/lib/pkgconfig:$SDKTARGETSYSROOT/usr/share/pkgconfig"' | tee -a {{ .ENV_PATH }}
+      - echo export PKG_CONFIG_SYSROOT_DIR='$SDKTARGETSYSROOT' | tee -a {{ .ENV_PATH }}
+      - echo export RANLIB='{{ .TOOLCHAIN_ARCH }}-ranlib' | tee -a {{ .ENV_PATH }}
+      - echo export READELF='{{ .TOOLCHAIN_ARCH }}-readelf' | tee -a {{ .ENV_PATH }}
+      - echo export STRIP='{{ .TOOLCHAIN_ARCH }}-strip' | tee -a {{ .ENV_PATH }}
+      - echo export TARGET_PREFIX='{{ .TOOLCHAIN_ARCH }}-' | tee -a {{ .ENV_PATH }}
 
   example:
     cmds:
       - task: fetch
-      - sudo rm -f {{ .DEBOS_PATH }}/root/usr/local/bin/hello
+      - sudo rm -f {{ .DEBOS_DIR }}/root/usr/local/bin/hello
       - |
-        eval "$(task source)"
+        task env > /dev/null
+        pushd {{ .BUILD_DIR }} && source "{{ .ENV_PATH }}" && popd
         make -C example clean hello
-        sudo cp example/hello {{ .DEBOS_PATH }}/root/usr/local/bin
+        sudo cp example/hello {{ .DEBOS_DIR }}/root/usr/local/bin
 
   create:tarball:
     summary: 'Pack all-in-one toolchain tarball'
     cmds:
-      - mkdir -p {{ .TARBALL_DIR }}
-      - |
-        sudo cp -a {{ .SYSROOT_PATH }} {{ .TARBALL_DIR }}/sysroot
-        sudo cp -a {{ .DEBOS_PATH }}/root {{ .TARBALL_DIR }}/rootfs
-        sudo cp -a {{ .TOOLCHAIN_PATH }} {{ .TARBALL_DIR }}/
-      - mkdir -p {{ .TARBALL_DIR }}/ti
-      - test -e {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz && tar -xf {{ .DOWNLOADDIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{ .TARBALL_DIR }}/ti || true
-      - test -e {{ .DOWNLOADDIR }}/mcusw-j722s.zip && unzip -n {{ .DOWNLOADDIR }}/mcusw-j722s.zip -d {{.TARBALL_DIR}}/ti/ || true
-      - sudo tar czf {{ .TARBALL_FILE_PATH }} -C {{ .TARBALL_DIR }} .
-      - sudo chown $USER:$USER {{ .TARBALL_FILE_PATH }}
-      - sudo rm -rf {{ .TARBALL_DIR }}
+      - task: fetch
+      - task: fetch-ti
+      - task env > /dev/null
+      - tar caf {{ .TARBALL_FILE_PATH }} -C {{ .BUILD_DIR }} env sysroot toolchain -C {{ .TARBALL_DIR }} ti

@@ -54,7 +54,6 @@ cross compilation are copied into `./build/{distro}/sysroot` folder and any brok
 ##### 5. Compile example project using the toolchain.
 
 ```bash
-📦 devbox:sdk> eval "$(task source)"
 📦 devbox:sdk> task example
 ```
 
