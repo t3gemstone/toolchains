@@ -23,7 +23,7 @@ vars:
   DEBOS_DIR: '{{ .BUILD_DIR }}/debos'
   SYMLINK_FIXER_PATH: '{{ .DOWNLOAD_DIR }}/symlink-fixer'
   TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{.VERSION}}'
-  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.gz'
+  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.xz'
   URLS:
     map: {
       jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
@@ -107,22 +107,17 @@ tasks:
   fetch-ti:
     silent: true
     cmds:
-      - rm -rf "{{ .TARBALL_DIR }}/ti"
-      - mkdir -p "{{ .TARBALL_DIR }}/ti"
       - task: wget
         vars:
           URL: '{{ get .URLS "texas_j722_rtos_sdk" }}'
           PATH: '{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz'
-      - tar xf {{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz --skip-old-files --directory {{ .TARBALL_DIR }}/ti
       - task: wget
         vars:
           URL: '{{ get .URLS "texas_j722_mcusw_sdk" }}'
           PATH: '{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip'
-      - unzip -n {{ .DOWNLOAD_DIR }}/mcusw-j722s.zip -d {{.TARBALL_DIR}}/ti/
     status:
       - test -f "{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip"
       - test -f "{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz"
-      - test -d "{{ .TARBALL_DIR }}/ti"
 
   env:
     silent: true
@@ -173,6 +168,5 @@ tasks:
     summary: 'Pack all-in-one toolchain tarball'
     cmds:
       - task: fetch
-      - task: fetch-ti
       - task env > /dev/null
-      - tar caf {{ .TARBALL_FILE_PATH }} -C {{ .BUILD_DIR }} env sysroot toolchain -C {{ .TARBALL_DIR }} ti
+      - tar caf {{ .TARBALL_FILE_PATH }} -C {{ .BUILD_DIR }} env sysroot toolchain
