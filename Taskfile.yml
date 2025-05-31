@@ -4,7 +4,7 @@
 version: '3'
 
 vars:
-  VERSION: '1.0.1'
+  VERSION: '1.0.2'
   TOOLCHAIN_ARCH: aarch64-none-linux-gnu
   DISTRO_BASE: '{{ .DISTRO_BASE | default "ubuntu" }}'
   DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
@@ -20,10 +20,11 @@ vars:
         echo "toolchain/{{ .TOOLCHAIN_ARCH }}/libc"
       fi
   ENV_PATH: '{{ .BUILD_DIR }}/env'
+  VERSION_PATH: '{{ .BUILD_DIR }}/version'
   DEBOS_DIR: '{{ .BUILD_DIR }}/debos'
   SYMLINK_FIXER_PATH: '{{ .DOWNLOAD_DIR }}/symlink-fixer'
-  TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{.VERSION}}'
-  TARBALL_FILE_PATH: '{{ .ROOT_DIR }}/build/tarball/prebuilt-toolchain-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}-{{ .VERSION }}.tar.xz'
+  TARBALL_DIR: '{{ .ROOT_DIR }}/build/tarball/{{ .VERSION }}'
+  TARBALL_PATH: '{{ .TARBALL_DIR }}/gemstone-toolchains-{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}.tar.xz'
   URLS:
     map: {
       jammy: 'https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
@@ -123,10 +124,16 @@ tasks:
     silent: true
     cmds:
       - task: fetch
+      - rm -f {{ .VERSION_PATH }}
       - rm -f {{ .ENV_PATH }}
-      - echo '# Run <source {{ .ENV_PATH }}> to export following environment variables to your shell'
+      - echo 'Distro={{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}' | tee -a {{ .VERSION_PATH }}
+      - echo 'Version={{ .VERSION }}' | tee -a {{ .VERSION_PATH }}
+      - echo 'Timestamp={{ now.UTC.Format "2006-01-02 15:04:05Z" }}' | tee -a {{ .VERSION_PATH }}
       - echo
+      - echo export GEMSTONE_TOOLCHAIN_DISTRO='"{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}"' | tee -a {{ .ENV_PATH }}
+      - echo export GEMSTONE_TOOLCHAIN_VERSION='"{{ .VERSION }}"' | tee -a {{ .ENV_PATH }}
       - echo '[ -z "${BASH_SOURCE[0]}" ] && ENV_PATH="$(dirname "$(realpath "$0")")" || ENV_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"' | tee -a {{ .ENV_PATH }}
+      - echo export PATH='"$ENV_PATH/toolchain/bin:$PATH"'
       - echo export SDKTARGETSYSROOT='"$ENV_PATH/{{ .SYSROOT_REL_PATH }}"' | tee -a {{ .ENV_PATH }}
       - echo export AR='{{ .TOOLCHAIN_ARCH }}-ar' | tee -a {{ .ENV_PATH }}
       - echo export ARCH='arm64' | tee -a {{ .ENV_PATH }}
@@ -153,6 +160,8 @@ tasks:
       - echo export READELF='{{ .TOOLCHAIN_ARCH }}-readelf' | tee -a {{ .ENV_PATH }}
       - echo export STRIP='{{ .TOOLCHAIN_ARCH }}-strip' | tee -a {{ .ENV_PATH }}
       - echo export TARGET_PREFIX='{{ .TOOLCHAIN_ARCH }}-' | tee -a {{ .ENV_PATH }}
+      - echo
+      - echo '# Run <source {{ .ENV_PATH }}> to use the toolchain'
 
   example:
     cmds:
@@ -168,5 +177,8 @@ tasks:
     summary: 'Pack all-in-one toolchain tarball'
     cmds:
       - task: fetch
+      - mkdir -p "{{ .TARBALL_DIR }}"
       - task env > /dev/null
-      - tar caf {{ .TARBALL_FILE_PATH }} -C {{ .BUILD_DIR }} env sysroot toolchain
+      - tar caf "{{ .TARBALL_PATH }}" -C {{ .BUILD_DIR }} version env sysroot toolchain
+    status:
+      - test -f "{{ .TARBALL_PATH }}"
