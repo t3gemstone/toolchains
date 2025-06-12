@@ -6,6 +6,7 @@ version: '3'
 vars:
   DEBOS_VERSION: '{{ .DEBOS_VERSION | default "v1.1.3-custom" }}'
   DISTRO_HOSTNAME: '{{ .DISTRO_BASE }}-{{ .DISTRO_SUITE }}'
+  SYSROOT_PATH: '{{ .BUILD_DIR }}/sysroot'
 
 tasks:
 
@@ -13,7 +14,7 @@ tasks:
     internal: true
     cmds:
       - task: :fetch
-      - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes # fix exec format error when using chroot
+      - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null # fix exec format error
       - cd src/debos && docker build --tag t3gemstone/debos:{{ .DEBOS_VERSION }} --file docker/Dockerfile .
     status:
       - docker image inspect t3gemstone/debos:{{ .DEBOS_VERSION }}
@@ -24,6 +25,7 @@ tasks:
       DOCKER_OPTIONS: '{{ default "" .DOCKER_OPTIONS }}'
       PROGRAM_OPTIONS: '{{ default "" .PROGRAM_OPTIONS }}'
     cmds:
+      - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null # fix exec format error
       - task: docker-build
       - docker run
           --rm
@@ -32,7 +34,7 @@ tasks:
           --tty
           --workdir /recipes
           --volume ./distro:/recipes
-          --volume {{ .DEBOS_PATH }}:/debos
+          --volume {{ .DEBOS_DIR }}:/debos
           --cap-add=SYS_ADMIN
           --security-opt apparmor=unconfined
           --security-opt label=disable
@@ -83,13 +85,12 @@ tasks:
         )
 
         for dir in "${DIRS_TO_COPY[@]}"; do
-            if [ -d "{{ .DEBOS_PATH }}/root$dir" ]; then
+            if [ -d "{{ .DEBOS_DIR }}/root$dir" ]; then
                 echo "Copying $dir..."
-                rsync --archive --sparse --delete --mkpath "{{ .DEBOS_PATH }}/root$dir" "{{ .SYSROOT_PATH }}$dir"
+                rsync --archive --sparse --delete --mkpath "{{ .DEBOS_DIR }}/root$dir" "{{ .SYSROOT_PATH }}$dir"
             else
-                echo "Warning: Directory {{ .DEBOS_PATH }}/root$dir does not exist, skipping."
+                echo "Warning: Directory {{ .DEBOS_DIR }}/root$dir does not exist, skipping."
             fi
         done
-
       - '{{ .SYMLINK_FIXER_PATH }} {{ .SYSROOT_PATH }} >/dev/null'
       - ln -sf usr/lib "{{ .SYSROOT_PATH }}/lib"

@@ -31,8 +31,6 @@ vars:
       bullseye: 'https://developer.arm.com/-/media/Files/downloads/gnu-a/10.2-2020.11/binrel/gcc-arm-10.2-2020.11-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
       bookworm: 'https://developer.arm.com/-/media/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-{{.TOOLCHAIN_ARCH}}.tar.xz',
       symlinkfixer: 'https://raw.githubusercontent.com/abhiTronix/rpi_rootfs/master/scripts/sysroot-relativelinks.py',
-      texas_j722_rtos_sdk: 'https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-1bSfTnVt5d/10.01.00.04/ti-processor-sdk-rtos-j722s-evm-10_01_00_04.tar.gz',
-      texas_j722_mcusw_sdk: 'https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-1bSfTnVt5d/10.01.00.04/MCUSW_J722S_10.01.00.03.zip',
     }
 
 includes:
@@ -103,21 +101,6 @@ tasks:
       - test "$({{ .TOOLCHAIN_DIR }}/bin/{{ .TOOLCHAIN_ARCH }}-gcc -dumpmachine)" == "{{ .TOOLCHAIN_ARCH }}"
       - test -x "{{ .SYMLINK_FIXER_PATH }}"
       - test -d src/debos
-
-  fetch-ti:
-    silent: true
-    cmds:
-      - task: wget
-        vars:
-          URL: '{{ get .URLS "texas_j722_rtos_sdk" }}'
-          PATH: '{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz'
-      - task: wget
-        vars:
-          URL: '{{ get .URLS "texas_j722_mcusw_sdk" }}'
-          PATH: '{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip'
-    status:
-      - test -f "{{ .DOWNLOAD_DIR }}/mcusw-j722s.zip"
-      - test -f "{{ .DOWNLOAD_DIR }}/ti-j722s-rtos-sdk.tar.gz"
 
   env:
     silent: true
