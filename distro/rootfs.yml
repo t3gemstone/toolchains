@@ -76,6 +76,7 @@ actions:
     recommends: false
     packages:
       - libncurses-dev
+      - libgpiod-dev
 
 {{ if eq $type "qt" }}
   - action: apt
