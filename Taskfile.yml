@@ -4,7 +4,7 @@
 version: '3'
 
 vars:
-  VERSION: '1.0.5'
+  VERSION: '1.0.6'
   TOOLCHAIN_ARCH: aarch64-none-linux-gnu
   DISTRO_BASE: '{{ .DISTRO_BASE | default "ubuntu" }}'
   DISTRO_SUITE: '{{ .DISTRO_SUITE | default "jammy" }}'
@@ -90,7 +90,7 @@ tasks:
         - name: DISTRO_BASE
           enum: [ ubuntu, debian ]
         - name: DISTRO_TYPE
-          enum: [ minimal, qt ]
+          enum: [ minimal, qt, edgeai ]
         - name: DISTRO_SUITE
           enum:
             - jammy     # Ubuntu 22.04, GLIBC 2.35
