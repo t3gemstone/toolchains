@@ -58,6 +58,13 @@ actions:
       - sudo
       - wget
 
+  - action: run
+    description: Add packages.t3gemstone.org apt mirror
+    chroot: true
+    command: |
+      wget --no-verbose -O /usr/share/keyrings/gemstone-packages-keyring.gpg https://packages.t3gemstone.org/apt/gemstone-packages-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/gemstone-packages-keyring.gpg] https://packages.t3gemstone.org/apt/gemstone {{ $suite }} main" >/etc/apt/sources.list.d/t3gemstone.list
+
   - action: apt
     description: Install essential libs
     recommends: false
@@ -84,6 +91,13 @@ actions:
     packages:
       - qtbase5-dev
       - qt6-base-dev
+{{ end }}
+
+{{ if eq $type "edgeai" }}
+  - action: apt
+    description: Install edgeai libs
+    packages:
+      - t3-edgeai-dev
 {{ end }}
 
   - action: run

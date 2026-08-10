@@ -1,0 +1,129 @@
+# T3 Foundation Gemstone Project [t3gemstone.org]
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build Toolchain
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      distro_base:
+        description: 'Distro base'
+        type: choice
+        default: ubuntu
+        options: [ ubuntu, debian ]
+      distro_suite:
+        description: 'Distro suite'
+        type: choice
+        default: jammy
+        options: [ jammy, noble, bullseye, bookworm ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro_type: [ minimal, qt, edgeai ]
+    env:
+      DISTRO_BASE: ${{ inputs.distro_base || 'ubuntu' }}
+      DISTRO_SUITE: ${{ inputs.distro_suite || 'jammy' }}
+      DISTRO_TYPE: ${{ matrix.distro_type }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force || true
+          df -h
+
+      - name: Enable qemu-user-static (multiarch)
+        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@v0.13.0
+        with:
+          enable-cache: 'true'
+
+      - name: distro:create
+        run: |
+          devbox run -- task distro:create \
+            DISTRO_BASE="$DISTRO_BASE" \
+            DISTRO_SUITE="$DISTRO_SUITE" \
+            DISTRO_TYPE="$DISTRO_TYPE"
+
+      - name: distro:sysroot
+        run: |
+          devbox run -- task distro:sysroot \
+            DISTRO_BASE="$DISTRO_BASE" \
+            DISTRO_SUITE="$DISTRO_SUITE" \
+            DISTRO_TYPE="$DISTRO_TYPE"
+
+      - name: create:tarball
+        run: |
+          devbox run -- task create:tarball \
+            DISTRO_BASE="$DISTRO_BASE" \
+            DISTRO_SUITE="$DISTRO_SUITE" \
+            DISTRO_TYPE="$DISTRO_TYPE"
+
+      - name: Tag tarball with distro type
+        run: |
+          find build/tarball -name '*.tar.gz' | while read -r f; do
+            mv "$f" "${f%.tar.gz}-${DISTRO_TYPE}.tar.gz"
+          done
+          ls -lh build/tarball/**/*.tar.gz
+
+      - name: Upload toolchain tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: t3gemstone-toolchains-${{ env.DISTRO_BASE }}-${{ env.DISTRO_SUITE }}-${{ matrix.distro_type }}
+          path: build/tarball/**/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve toolchain version
+        id: version
+        run: |
+          VERSION=$(grep -E '^\s*VERSION:' Taskfile.yml | head -n1 | sed -E "s/.*VERSION:\s*'?([^'\"]+)'?.*/\1/")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved VERSION=${VERSION}"
+
+      - name: Download all toolchain tarballs
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect tarballs
+        run: |
+          mkdir -p release
+          find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+          ls -lh release
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Toolchains v${{ steps.version.outputs.version }}
+          body: |
+            Automatically built toolchain tarballs for version `${{ steps.version.outputs.version }}`.
+
+            Commit: ${{ github.sha }}
+          files: release/*.tar.gz
+          fail_on_unmatched_files: true
+          make_latest: true
